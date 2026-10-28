@@ -125,7 +125,7 @@ class AudioDecoder(ctx: Context, uri: Uri) : Closeable {
                 floatPcm = f.containsKey(MediaFormat.KEY_PCM_ENCODING) &&
                     f.getInteger(MediaFormat.KEY_PCM_ENCODING) == AudioFormat.ENCODING_PCM_FLOAT
             } else if (oi >= 0) {
-                if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) outEos = true
+                if ((info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) outEos = true
                 var mono = FloatArray(0)
                 if (info.size > 0) {
                     val ob = codec.getOutputBuffer(oi)!!

@@ -49,8 +49,11 @@ class Embedder(modelPath: String, threads: Int = 2) {
         config = SpeakerEmbeddingExtractorConfig(model = modelPath, numThreads = threads),
     )
 
+    private var released = false
+
     @Synchronized
     fun embed(audio: FloatArray): FloatArray? {
+        if (released) return null
         if (audio.size < (0.4 * SR).toInt()) return null
         val st = ex.createStream()
         try {
@@ -63,7 +66,13 @@ class Embedder(modelPath: String, threads: Int = 2) {
         }
     }
 
-    fun release() = ex.release()
+    @Synchronized
+    fun release() {
+        if (!released) {
+            released = true
+            ex.release()
+        }
+    }
 }
 
 /** 실시간용: 대사가 올 때마다 목소리 번호를 붙인다. */

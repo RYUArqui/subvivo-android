@@ -22,6 +22,7 @@ const val SR = 16000
 class Asr(private val ctx: Context, val spec: ModelSpec, language: String?, private val threads: Int) {
     private var lang: String? = norm(language)
     private var rec: OfflineRecognizer = build(lang)
+    private var released = false
 
     private fun norm(l: String?): String? {
         if (l.isNullOrBlank()) return null
@@ -58,6 +59,7 @@ class Asr(private val ctx: Context, val spec: ModelSpec, language: String?, priv
 
     @Synchronized
     fun setLanguage(l: String?) {
+        if (released) return
         val n = norm(l)
         if (n != lang) {
             rec.release()
@@ -69,6 +71,7 @@ class Asr(private val ctx: Context, val spec: ModelSpec, language: String?, priv
     /** (원문, 언어) */
     @Synchronized
     fun transcribe(samples: FloatArray): Pair<String, String?> {
+        if (released) return Pair("", lang) // 정지 직후 남은 요청은 무시 (해제된 모델 사용 방지)
         val st = rec.createStream()
         try {
             st.acceptWaveform(samples, SR)
@@ -82,7 +85,12 @@ class Asr(private val ctx: Context, val spec: ModelSpec, language: String?, priv
     }
 
     @Synchronized
-    fun release() = rec.release()
+    fun release() {
+        if (!released) {
+            released = true
+            rec.release()
+        }
+    }
 
     companion object {
         fun cleanLang(s: String?): String? {

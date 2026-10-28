@@ -57,7 +57,7 @@ object Models {
             listOf("sense-voice-model.int8.onnx", "sense-voice-tokens.txt"), 230,
         ),
         whisper("tiny", "가벼움 · Whisper tiny (모든 언어, 정확도 낮음)", 100),
-        whisper("base", "균형 · Whisper base (모든 언어)", 160),
+        whisper("base", "균형 · Whisper base (모든 언어)", 155),
         whisper("small", "정확 · Whisper small (모든 언어, 느림)", 360),
     )
     val SPEAKER = ModelSpec("speaker", "목소리 구분 모델", "speaker", listOf("wespeaker_en_voxceleb_resnet34.onnx"), 26)
