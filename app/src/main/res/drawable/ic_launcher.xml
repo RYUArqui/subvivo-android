@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SubVivo 아이콘: 짙은 화면 위의 자막 두 줄 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#1E2430"
+        android:pathData="M24,4 L84,4 A20,20 0 0 1 104,24 L104,84 A20,20 0 0 1 84,104 L24,104 A20,20 0 0 1 4,84 L4,24 A20,20 0 0 1 24,4 Z" />
+    <path
+        android:fillColor="#FFE14D"
+        android:pathData="M26,62 L82,62 A5,5 0 0 1 82,72 L26,72 A5,5 0 0 1 26,62 Z" />
+    <path
+        android:fillColor="#5CD6FF"
+        android:pathData="M36,78 L72,78 A5,5 0 0 1 72,88 L36,88 A5,5 0 0 1 36,78 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,24 L78,24 L78,52 L30,52 Z M34,28 L34,48 L74,48 L74,28 Z" />
+</vector>

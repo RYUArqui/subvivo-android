@@ -1,0 +1,2 @@
+These files are copied unchanged from k2-fsa/sherpa-onnx v1.13.8 (sherpa-onnx/kotlin-api),
+licensed under the Apache License 2.0. https://github.com/k2-fsa/sherpa-onnx
