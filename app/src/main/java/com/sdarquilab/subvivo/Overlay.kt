@@ -17,8 +17,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import kotlin.math.abs
 
-/** 다른 앱 위에 떠 있는 자막 창. 끌어서 위아래로 옮길 수 있고, 위치는 기억한다. */
-class Overlay(private val ctx: Context, private val prefs: Prefs) {
+/** 다른 앱 위에 떠 있는 자막 창. 끌어서 위아래로 옮길 수 있고, 위치는 기억한다.
+ *  화면 구석에 작은 ■ 끄기 버튼도 함께 띄운다 (한 번 누르면 '끄기?', 3초 안에 한 번 더 누르면 꺼짐). */
+class Overlay(private val ctx: Context, private val prefs: Prefs, private val onStop: () -> Unit = {}) {
     private val wm = ctx.getSystemService(WindowManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
     private val root = LinearLayout(ctx)
@@ -28,6 +29,10 @@ class Overlay(private val ctx: Context, private val prefs: Prefs) {
     private var clearJob: Runnable? = null
     private var attached = false
     var partialShown = false; private set
+    private val bubble = TextView(ctx)
+    private val bparams: WindowManager.LayoutParams
+    private var armed = false
+    private val disarm = Runnable { setArmed(false) }
 
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, ctx.resources.displayMetrics)
 
@@ -57,19 +62,103 @@ class Overlay(private val ctx: Context, private val prefs: Prefs) {
         params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         params.y = if (prefs.overlayY >= 0) prefs.overlayY.coerceAtMost(screenH - 100) else (screenH * 0.70).toInt()
         enableDrag()
+
+        // ── 끄기 버튼 (끌어서 옮길 수 있음)
+        val size = dp(46f).toInt()
+        bubble.gravity = Gravity.CENTER
+        bubble.typeface = Typeface.DEFAULT_BOLD
+        setArmed(false)
+        bparams = WindowManager.LayoutParams(
+            size, size,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        )
+        bparams.gravity = Gravity.TOP or Gravity.START
+        bparams.x = if (prefs.bubbleX >= 0) prefs.bubbleX.coerceAtMost(screenW - size) else screenW - size - dp(12f).toInt()
+        bparams.y = if (prefs.bubbleY >= 0) prefs.bubbleY.coerceAtMost(screenH - size) else dp(96f).toInt()
+        enableBubble()
+    }
+
+    private fun setArmed(on: Boolean) {
+        armed = on
+        handler.removeCallbacks(disarm)
+        if (on) {
+            bubble.text = "끄기?"
+            bubble.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            bubble.setTextColor(Color.WHITE)
+            bubble.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xE0D32F2F.toInt())
+            }
+            handler.postDelayed(disarm, 3000)
+        } else {
+            bubble.text = "■"
+            bubble.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            bubble.setTextColor(0xEEFFFFFF.toInt())
+            bubble.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0x88000000.toInt())
+                setStroke(dp(1.5f).toInt(), 0x99FFFFFF.toInt())
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun enableBubble() {
+        var downX = 0f
+        var downY = 0f
+        var startX = 0
+        var startY = 0
+        var dragged = false
+        val slop = dp(8f)
+        bubble.setOnTouchListener { _, e ->
+            when (e.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = e.rawX; downY = e.rawY; startX = bparams.x; startY = bparams.y; dragged = false; true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = e.rawX - downX
+                    val dy = e.rawY - downY
+                    if (dragged || abs(dx) > slop || abs(dy) > slop) {
+                        dragged = true
+                        bparams.x = (startX + dx).toInt().coerceAtLeast(0)
+                        bparams.y = (startY + dy).toInt().coerceAtLeast(0)
+                        if (attached) wm.updateViewLayout(bubble, bparams)
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (dragged) {
+                        prefs.bubbleX = bparams.x
+                        prefs.bubbleY = bparams.y
+                    } else if (armed) {
+                        setArmed(false)
+                        onStop()
+                    } else {
+                        setArmed(true)
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     fun attach() {
         if (!attached) {
             wm.addView(root, params)
+            wm.addView(bubble, bparams)
             attached = true
         }
     }
 
     fun detach() {
         clearJob?.let { handler.removeCallbacks(it) }
+        handler.removeCallbacks(disarm)
         if (attached) {
             runCatching { wm.removeView(root) }
+            runCatching { wm.removeView(bubble) }
             attached = false
         }
     }

@@ -312,6 +312,17 @@ class LiveService : Service() {
     companion object {
         const val ACTION_STOP = "com.sdarquilab.subvivo.STOP_LIVE"
         @Volatile var running = false; private set
+        @Volatile private var instance: LiveService? = null
+
+        /** 어디서든 (빠른 설정 타일, 끄기 버튼) 실시간 자막을 끈다. */
+        fun stop(ctx: Context) {
+            val s = instance
+            if (s != null) {
+                s.stopSelf()
+            } else {
+                runCatching { ctx.startService(Intent(ctx, LiveService::class.java).setAction(ACTION_STOP)) }
+            }
+        }
         /** 마지막 실시간 세션의 자막 (SRT 저장용) */
         val lastCues: MutableList<Cue> = Collections.synchronizedList(ArrayList())
     }
@@ -357,6 +368,8 @@ class LiveService : Service() {
             return START_NOT_STICKY
         }
         running = true
+        instance = this
+        SubVivoTile.refresh(this)
 
         val fmt = AudioFormat.Builder()
             .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -407,7 +420,10 @@ class LiveService : Service() {
 
         wake = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "subvivo:live").apply { acquire(6 * 60 * 60 * 1000L) }
-        overlay = Overlay(this, prefs).also { it.attach() }
+        overlay = Overlay(this, prefs) {
+            overlay?.detach() // 화면에서 먼저 바로 치운다
+            stopSelf()
+        }.also { it.attach() }
         Bus.listen(listener)
         lastCues.clear()
         pipeline = LivePipeline(this, prefs, maker, label).also { it.start() }
@@ -445,6 +461,8 @@ class LiveService : Service() {
         projection = null
         runCatching { if (wake?.isHeld == true) wake?.release() }
         running = false
+        if (instance === this) instance = null
+        SubVivoTile.refresh(this)
         Bus.post(Ev("stopped", "정지됨. 자막 ${lastCues.size}줄 — ‘SRT로 저장’으로 보관할 수 있습니다."))
         if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()

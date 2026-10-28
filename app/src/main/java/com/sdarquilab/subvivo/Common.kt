@@ -179,6 +179,12 @@ class Prefs(ctx: Context) {
     var overlayY: Int
         get() = i("overlayY", -1)
         set(v) = put("overlayY", v)
+    var bubbleX: Int
+        get() = i("bubbleX", -1)
+        set(v) = put("bubbleX", v)
+    var bubbleY: Int
+        get() = i("bubbleY", -1)
+        set(v) = put("bubbleY", v)
     var skipExisting: Boolean
         get() = b("skipExisting", true)
         set(v) = put("skipExisting", v)

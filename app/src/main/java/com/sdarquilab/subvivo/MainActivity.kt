@@ -3,10 +3,13 @@ package com.sdarquilab.subvivo
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.StatusBarManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.Icon
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
@@ -234,6 +237,14 @@ class MainActivity : Activity() {
         b.addView(check("검은 상자 배경", prefs.boxStyle) { prefs.boxStyle = it; Bus.post(Ev("style")) })
         b.addView(check("말하는 중에도 미리 보기 (더 빠름, 배터리 더 씀)", prefs.preview) { prefs.preview = it })
         b.addView(text("자막은 손가락으로 끌어서 위아래로 옮길 수 있습니다.", 12f, color = 0xFF777777.toInt()))
+        b.addView(text(
+            "끄는 법: ① 영상 위 구석의 작은 ■ 버튼을 누르고, ‘끄기?’로 바뀌면 한 번 더 누르기 (■ 버튼도 끌어서 옮길 수 있음)  " +
+                "② 화면 위에서 아래로 끌어내린 빠른 설정의 ‘SubVivo’ 타일 누르기  ③ 알림의 ‘정지’",
+            12f, color = 0xFF777777.toInt(),
+        ))
+        if (Build.VERSION.SDK_INT >= 33) {
+            b.addView(button("빠른 설정에 ‘SubVivo 끄기’ 타일 추가") { addQsTile() })
+        }
 
         btnStart = button("▶ 실시간 자막 시작") { startLive() }
         btnStop = button("■ 정지") { stopLive() }
@@ -363,7 +374,25 @@ class MainActivity : Activity() {
     }
 
     private fun stopLive() {
-        startService(Intent(this, LiveService::class.java).setAction(LiveService.ACTION_STOP))
+        LiveService.stop(this)
+    }
+
+    private fun addQsTile() {
+        if (Build.VERSION.SDK_INT < 33) return
+        val sbm = getSystemService(StatusBarManager::class.java) ?: return
+        sbm.requestAddTileService(
+            ComponentName(this, SubVivoTile::class.java),
+            "SubVivo",
+            Icon.createWithResource(this, R.drawable.ic_notify),
+            mainExecutor,
+        ) { r ->
+            when (r) {
+                StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED -> toast("빠른 설정에 SubVivo 타일을 넣었습니다")
+                StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED -> toast("이미 빠른 설정에 있습니다")
+                StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_NOT_ADDED -> {}
+                else -> toast("자동으로 넣지 못했습니다. 빠른 설정의 연필(편집) 버튼에서 ‘SubVivo’를 끌어다 놓아 주세요")
+            }
+        }
     }
 
     private fun updateLiveButtons() {
